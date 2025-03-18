@@ -132,6 +132,7 @@ enum AppointmentStatus {
   CONFIRMED
   COMPLETED
   CANCELED
+  REPORT_GENERATED
 }
 
 enum TestType {

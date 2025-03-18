@@ -15,3 +15,8 @@ export interface GetLabAssistantsRequest {
   labId: string;
   headId: string;
 }
+
+export interface GetAppointmentsRequest {
+  labId: string;
+  status: string;
+}
