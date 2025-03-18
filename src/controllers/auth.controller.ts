@@ -2,7 +2,8 @@ import { Request, Response } from 'express'
 import { supabase } from '../config/supabase.config'
 import {
   PatientSignUpRequest,
-  LabRegistrationRequest
+  LabRegistrationRequest,
+  TestType
 } from '../types/user.types'
 
 const signUpPatient = async (
@@ -23,7 +24,11 @@ const signUpPatient = async (
     console.log('📨 Request body:', req.body)
 
     // Sign up user in Supabase Auth
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      phone
+    })
     console.log('🔹 Supabase signUp response:', { data, error })
 
     if (error) {
@@ -75,8 +80,32 @@ const signUpPatient = async (
 
 const registerLab = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { email, password, name, phone, labName, labAddress } = req.body
+    const {
+      email,
+      password,
+      name,
+      phone,
+      labName,
+      labAddress,
+      testTypes
+    }: LabRegistrationRequest = req.body
     console.log('📨 Request body:', req.body)
+
+    // Validate test types
+    if (!Array.isArray(testTypes) || testTypes.length === 0) {
+      return res.status(400).json({ error: 'Invalid test types provided' })
+    }
+
+    const validTestTypes = Object.values(TestType)
+    const invalidTests = testTypes.filter(
+      test => !validTestTypes.includes(test as TestType)
+    )
+
+    if (invalidTests.length > 0) {
+      return res.status(400).json({
+        error: `Invalid test types: ${invalidTests.join(', ')}`
+      })
+    }
 
     // Step 1: Create user in Supabase Auth
     const { data, error } = await supabase.auth.signUp({ email, password })
@@ -92,7 +121,7 @@ const registerLab = async (req: Request, res: Response): Promise<Response> => {
       .insert([{ id: userId, email, name, phone, role: 'LAB_HEAD' }])
     if (userError) return res.status(400).json({ error: userError.message })
 
-    // Step 3: Insert lab into `labs` table (UUID auto-generated)
+    // Step 3: Insert lab into `labs` table
     const { data: labData, error: labError } = await supabase
       .from('Lab')
       .insert([
@@ -104,16 +133,27 @@ const registerLab = async (req: Request, res: Response): Promise<Response> => {
           autoAppointment: false
         }
       ])
-      .select() // Get inserted row
+      .select()
 
     if (labError) return res.status(400).json({ error: labError.message })
-    const labId = labData[0].id // Get auto-generated lab ID
+    const labId = labData[0].id
 
     // Step 4: Assign user as lab head
     const { error: headError } = await supabase
       .from('LabHead')
       .insert([{ userId, labId }])
     if (headError) return res.status(400).json({ error: headError.message })
+
+    // Step 5: Insert tests into `LabTest` table
+    const testInsertData = testTypes.map(test => ({
+      labId,
+      testType: test
+    }))
+
+    const { error: testError } = await supabase
+      .from('LabTest')
+      .insert(testInsertData)
+    if (testError) return res.status(400).json({ error: testError.message })
 
     return res.status(201).json({
       message: 'Lab registered successfully',

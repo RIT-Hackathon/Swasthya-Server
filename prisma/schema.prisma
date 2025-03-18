@@ -75,12 +75,11 @@ model Lab {
 }
 
 model LabTest {
-  id      String @id @default(uuid())
-  labId   String
+  id       String   @id @default(uuid())
+  labId    String
+  testType TestType
 
-  testName String
-
-  lab     Lab @relation(fields: [labId], references: [id])
+  lab      Lab @relation(fields: [labId], references: [id])
 }
 
 model Appointment {
@@ -133,4 +132,13 @@ enum AppointmentStatus {
   CONFIRMED
   COMPLETED
   CANCELED
+}
+
+enum TestType {
+  BLOOD_TEST
+  X_RAY
+  MRI
+  CT_SCAN
+  URINE_TEST
+  ECG
 }
