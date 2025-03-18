@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+        
+
+model User {
+  id        String  @id @default(uuid())
+  name      String
+  email     String  @unique
+  phone     String? @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+
+  Patient        Patient?
+  LabHead        LabHead?
+  LabAssistant   LabAssistant?
+  ExternalDoctor ExternalDoctor?
+}
+
+model Patient {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  dateOfBirth  DateTime?
+  gender       String?
+  address      String?
+  insuranceId  String? @unique
+
+  user         User   @relation(fields: [userId], references: [id])
+  appointments Appointment[]
+  medicalRecords MedicalRecord[]
+}
+
+model LabHead {
+  id      String @id @default(uuid())
+  userId  String @unique
+  labId   String @unique
+
+  user    User @relation(fields: [userId], references: [id])
+  lab     Lab  @relation(fields: [labId], references: [id])
+  verifiedAppointments Appointment[] @relation("VerifiedByHead") // ✅ Fixed (removed `references`)
+}
+
+model LabAssistant {
+  id      String @id @default(uuid())
+  userId  String @unique
+  labId   String
+
+  user    User @relation(fields: [userId], references: [id])
+  lab     Lab  @relation(fields: [labId], references: [id])
+  schedules AssistantSchedule[]
+}
+
+model ExternalDoctor {
+  id            String @id @default(uuid())
+  userId        String @unique
+  specialization String
+  hospital      String
+
+  user          User @relation(fields: [userId], references: [id])
+}
+
+model Lab {
+  id              String  @id @default(uuid())
+  name            String
+  address         String
+  phone           String  @unique
+  email           String  @unique
+  autoAppointment Boolean @default(false)
+
+  head            LabHead?
+  assistants      LabAssistant[]
+  tests           LabTest[]
+  appointments    Appointment[]
+}
+
+model LabTest {
+  id      String @id @default(uuid())
+  labId   String
+
+  testName String
+
+  lab     Lab @relation(fields: [labId], references: [id])
+}
+
+model Appointment {
+  id          String  @id @default(uuid())
+  patientId   String
+  labId       String
+  scheduledAt DateTime
+  status      AppointmentStatus @default(PENDING)
+  verifiedBy  String? 
+
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  lab         Lab       @relation(fields: [labId], references: [id])
+  verifiedByHead LabHead? @relation("VerifiedByHead", fields: [verifiedBy], references: [id]) // ✅ Fixed (only here)
+  assistantSchedule AssistantSchedule?
+  medicalRecords MedicalRecord[]
+}
+
+model AssistantSchedule {
+  id            String  @id @default(uuid())
+  assistantId   String
+  appointmentId String  @unique
+  startTime     DateTime
+  endTime       DateTime
+
+  assistant     LabAssistant @relation(fields: [assistantId], references: [id])
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+}
+
+model MedicalRecord {
+  id           String  @id @default(uuid())
+  patientId    String
+  appointmentId String
+  recordType   String
+  recordUrl    String
+  createdAt    DateTime @default(now())
+
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  appointment  Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  PATIENT
+  LAB_HEAD
+  LAB_ASSISTANT
+  EXTERNAL_DOCTOR
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
