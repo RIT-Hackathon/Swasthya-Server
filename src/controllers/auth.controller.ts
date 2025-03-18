@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { supabase } from '../config/supabase.config'
+import { supabase, supabaseAdmin } from '../config/supabase.config'
 import {
   PatientSignUpRequest,
   LabRegistrationRequest,
@@ -21,7 +21,6 @@ const signUpPatient = async (
       address,
       insuranceId
     }: PatientSignUpRequest = req.body
-    console.log('📨 Request body:', req.body)
 
     // Sign up user in Supabase Auth
     const { data, error } = await supabase.auth.signUp({
@@ -42,6 +41,14 @@ const signUpPatient = async (
     }
 
     const userId = data.user.id // Use the same ID for User & Patient
+
+    // **Step 2: Force Email Confirmation (Requires Service Role Key)**
+    const { error: confirmError } =
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        email_confirm: true
+      })
+
+    console.log('✅ Email confirmed successfully:', data)
 
     // Insert user details into 'User' table
     const { error: dbError1 } = await supabase
@@ -89,7 +96,6 @@ const registerLab = async (req: Request, res: Response): Promise<Response> => {
       labAddress,
       testTypes
     }: LabRegistrationRequest = req.body
-    console.log('📨 Request body:', req.body)
 
     // Validate test types
     if (!Array.isArray(testTypes) || testTypes.length === 0) {
@@ -114,6 +120,14 @@ const registerLab = async (req: Request, res: Response): Promise<Response> => {
       return res.status(500).json({ error: 'User registration failed' })
 
     const userId = data.user.id
+
+    // **Step 2: Force Email Confirmation (Requires Service Role Key)**
+    const { error: confirmError } =
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        email_confirm: true
+      })
+
+    console.log('✅ Email confirmed successfully:', data)
 
     // Step 2: Insert user into `users` table
     const { error: userError } = await supabase
@@ -166,4 +180,36 @@ const registerLab = async (req: Request, res: Response): Promise<Response> => {
   }
 }
 
-export { signUpPatient, registerLab }
+const signInUser = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { email, password } = req.body
+
+    // Step 1: Sign in with Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+    if (error) return res.status(400).json({ error: error.message })
+
+    // Step 2: Fetch user details
+    const { data: userData, error: userError } = await supabase
+      .from('User')
+      .select('id, name, email, phone, role')
+      .eq('id', data.user.id)
+      .single()
+
+    if (userError) return res.status(400).json({ error: userError.message })
+
+    return res.status(200).json({
+      message: 'User signed in successfully',
+      user: userData,
+      accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token
+    })
+  } catch (err) {
+    console.error('❌ Internal Server Error:', err)
+    return res.status(500).json({ error: 'Internal Server Error' })
+  }
+}
+
+export { signUpPatient, registerLab, signInUser }

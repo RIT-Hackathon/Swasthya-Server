@@ -1,5 +1,9 @@
 import express from 'express'
-import { signUpPatient, registerLab } from '../controllers/auth.controller'
+import {
+  signUpPatient,
+  registerLab,
+  signInUser
+} from '../controllers/auth.controller'
 
 const router = express.Router()
 
@@ -19,6 +23,16 @@ router.post('/register-lab', async (req, res, next) => {
     await registerLab(req, res)
   } catch (error) {
     console.error('❌ Error in /register-lab route:', error)
+    next(error)
+  }
+})
+
+router.post('/sign-in', async (req, res, next) => {
+  try {
+    console.log('📨 Received request at /sign-in:', req.body)
+    await signInUser(req, res)
+  } catch (error) {
+    console.error('❌ Error in /sign-in route:', error)
     next(error)
   }
 })
