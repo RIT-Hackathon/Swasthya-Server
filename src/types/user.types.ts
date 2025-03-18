@@ -1,4 +1,4 @@
-export interface UserRequestBody {
+export interface PatientSignUpRequest {
   email: string
   password: string
   name: string

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { supabase } from '../config/supabase.config'
-import { UserRequestBody } from '../types/user.types'
+import { PatientSignUpRequest } from '../types/user.types'
 
 const signUpPatient = async (
   req: Request,
@@ -16,7 +16,7 @@ const signUpPatient = async (
       gender,
       address,
       insuranceId
-    }: UserRequestBody = req.body
+    }: PatientSignUpRequest = req.body
     console.log('📨 Request body:', req.body)
 
     // Sign up user in Supabase Auth
