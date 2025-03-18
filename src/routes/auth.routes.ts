@@ -1,12 +1,12 @@
 import express from 'express'
-import { signUp } from '../controllers/auth.controller'
+import { signUpPatient } from '../controllers/auth.controller'
 
 const router = express.Router()
 
-router.post('/register', async (req, res, next) => {
+router.post('/register-patient', async (req, res, next) => {
   try {
     console.log('📨 Received request at /register:', req.body)
-    await signUp(req, res)
+    await signUpPatient(req, res)
   } catch (error) {
     console.error('❌ Error in /register route:', error)
     next(error)

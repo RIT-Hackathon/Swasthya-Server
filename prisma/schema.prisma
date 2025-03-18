@@ -7,10 +7,9 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-        
 
 model User {
-  id        String  @id @default(uuid())
+  id        String  @id @default(uuid()) // Unified ID across user roles
   name      String
   email     String  @unique
   phone     String? @unique
@@ -24,8 +23,7 @@ model User {
 }
 
 model Patient {
-  id           String   @id @default(uuid())
-  userId       String   @unique
+  userId       String   @id // Using userId as the primary key
   dateOfBirth  DateTime?
   gender       String?
   address      String?
@@ -37,18 +35,16 @@ model Patient {
 }
 
 model LabHead {
-  id      String @id @default(uuid())
-  userId  String @unique
+  userId  String @id
   labId   String @unique
 
   user    User @relation(fields: [userId], references: [id])
   lab     Lab  @relation(fields: [labId], references: [id])
-  verifiedAppointments Appointment[] @relation("VerifiedByHead") // ✅ Fixed (removed `references`)
+  verifiedAppointments Appointment[] @relation("VerifiedByHead")
 }
 
 model LabAssistant {
-  id      String @id @default(uuid())
-  userId  String @unique
+  userId  String @id
   labId   String
 
   user    User @relation(fields: [userId], references: [id])
@@ -57,8 +53,7 @@ model LabAssistant {
 }
 
 model ExternalDoctor {
-  id            String @id @default(uuid())
-  userId        String @unique
+  userId        String @id
   specialization String
   hospital      String
 
@@ -96,9 +91,9 @@ model Appointment {
   status      AppointmentStatus @default(PENDING)
   verifiedBy  String? 
 
-  patient     Patient   @relation(fields: [patientId], references: [id])
+  patient     Patient   @relation(fields: [patientId], references: [userId]) 
   lab         Lab       @relation(fields: [labId], references: [id])
-  verifiedByHead LabHead? @relation("VerifiedByHead", fields: [verifiedBy], references: [id]) // ✅ Fixed (only here)
+  verifiedByHead LabHead? @relation("VerifiedByHead", fields: [verifiedBy], references: [userId]) 
   assistantSchedule AssistantSchedule?
   medicalRecords MedicalRecord[]
 }
@@ -110,7 +105,7 @@ model AssistantSchedule {
   startTime     DateTime
   endTime       DateTime
 
-  assistant     LabAssistant @relation(fields: [assistantId], references: [id])
+  assistant     LabAssistant @relation(fields: [assistantId], references: [userId])
   appointment   Appointment  @relation(fields: [appointmentId], references: [id])
 }
 
@@ -122,7 +117,7 @@ model MedicalRecord {
   recordUrl    String
   createdAt    DateTime @default(now())
 
-  patient      Patient   @relation(fields: [patientId], references: [id])
+  patient      Patient   @relation(fields: [patientId], references: [userId])
   appointment  Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 

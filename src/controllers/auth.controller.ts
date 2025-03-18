@@ -2,9 +2,21 @@ import { Request, Response } from 'express'
 import { supabase } from '../config/supabase.config'
 import { UserRequestBody } from '../types/user.types'
 
-const signUp = async (req: Request, res: Response): Promise<Response> => {
+const signUpPatient = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
   try {
-    const { email, password, name, phone }: UserRequestBody = req.body
+    const {
+      email,
+      password,
+      name,
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      insuranceId
+    }: UserRequestBody = req.body
     console.log('📨 Request body:', req.body)
 
     // Sign up user in Supabase Auth
@@ -21,23 +33,36 @@ const signUp = async (req: Request, res: Response): Promise<Response> => {
       return res.status(500).json({ error: 'User registration failed' })
     }
 
-    // Insert user details into the 'users' table
-    const { data: insertData, error: dbError } = await supabase
+    const userId = data.user.id // Use the same ID for User & Patient
+
+    // Insert user details into 'User' table
+    const { error: dbError1 } = await supabase
       .from('User')
-      .insert([{ id: data.user.id, email, name, phone, role: 'PATIENT' }])
-      .select() // Fetch inserted row for confirmation
+      .insert([{ id: userId, email, name, phone, role: 'PATIENT' }])
 
-    console.log('🛢️ Database insert response:', { insertData, dbError })
-
-    if (dbError) {
-      console.error('❌ Database insert error:', dbError.message)
-      return res.status(400).json({ error: dbError.message })
+    if (dbError1) {
+      console.error('❌ User table insert error:', dbError1.message)
+      return res.status(400).json({ error: dbError1.message })
     }
 
-    console.log('✅ User registered successfully:', insertData)
+    // Insert patient details into 'Patient' table
+    const { data: patientData, error: dbError2 } = await supabase
+      .from('Patient')
+      .insert([{ userId, dateOfBirth, gender, address, insuranceId }])
+      .select() // Fetch inserted row for confirmation
+
+    console.log('🛢️ Patient table insert response:', { patientData, dbError2 })
+
+    if (dbError2) {
+      console.error('❌ Patient table insert error:', dbError2.message)
+      return res.status(400).json({ error: dbError2.message })
+    }
+
+    console.log('✅ Patient registered successfully:', patientData)
     return res.status(201).json({
-      message: 'User registered successfully',
-      user: insertData
+      message: 'Patient registered successfully',
+      user: { id: userId, email, name, phone },
+      patient: patientData
     })
   } catch (err) {
     console.error('❌ Internal Server Error:', err)
@@ -45,4 +70,4 @@ const signUp = async (req: Request, res: Response): Promise<Response> => {
   }
 }
 
-export { signUp }
+export { signUpPatient }
