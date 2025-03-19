@@ -37,7 +37,7 @@ export const signUpPatient = async (
       console.log("🚀 ~ apiError:", apiError);
       return res.status(apiError.statusCode).json({
         success: false,
-        data: apiError, 
+        data: apiError,
       });
     }
 
@@ -46,7 +46,7 @@ export const signUpPatient = async (
       const apiError = new ApiError(500, "User registration failed");
       return res.status(apiError.statusCode).json({
         success: false,
-        data: apiError, 
+        data: apiError,
       });
     }
 
@@ -70,7 +70,7 @@ export const signUpPatient = async (
       const apiError = new ApiError(400, dbError1.message);
       return res.status(apiError.statusCode).json({
         success: false,
-        data: apiError, 
+        data: apiError,
       });
     }
 
@@ -87,7 +87,7 @@ export const signUpPatient = async (
       const apiError = new ApiError(400, dbError2.message);
       return res.status(apiError.statusCode).json({
         success: false,
-        data: apiError, 
+        data: apiError,
       });
     }
 
