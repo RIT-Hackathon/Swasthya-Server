@@ -219,3 +219,187 @@ export const confirmAppointment = async (
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// 🟡 Assign Home Appointment to an Assistant
+export const assignHomeAppointment = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { appointmentId, assistantId } = req.body as {
+      appointmentId: string;
+      assistantId: string;
+    };
+
+    // Check if the appointment exists and is a home appointment
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("Appointment")
+      .select("id, status, homeAppointment")
+      .eq("id", appointmentId)
+      .single();
+
+    if (appointmentError || !appointment)
+      return res.status(404).json(new ApiError(404, "Appointment not found"));
+    if (!appointment.homeAppointment)
+      return res.status(400).json(new ApiError(400, "Not a home appointment"));
+    if (appointment.status !== "HOME")
+      return res
+        .status(400)
+        .json(new ApiError(400, "Appointment is already assigned"));
+
+    // Assign assistant and set status to PENDING
+    const { error: assignError } = await supabase
+      .from("AssistantSchedule")
+      .insert({
+        assistantId,
+        appointmentId,
+        startTime: new Date().toISOString(),
+        endTime: new Date(new Date().getTime() + 3600000).toISOString(), // +1 hour default time
+      });
+
+    if (assignError) throw new ApiError(400, assignError.message);
+
+    // Update appointment status
+    const { error: updateError } = await supabase
+      .from("Appointment")
+      .update({ status: "PENDING" })
+      .eq("id", appointmentId);
+
+    if (updateError) throw new ApiError(400, updateError.message);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, "Appointment assigned to assistant successfully")
+      );
+  } catch (err) {
+    console.error("❌ Error assigning home appointment:", err);
+    return res.status(500).json(new ApiError(500, "Internal Server Error"));
+  }
+};
+
+// 🟡 Confirm Home Appointment and Send WhatsApp Notification
+export const confirmHomeAppointment = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { appointmentId } = req.body as { appointmentId: string };
+
+    // Fetch appointment details
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("Appointment")
+      .select(
+        "id, patientId, labId, testType, scheduledAt, homeAppointment, status"
+      )
+      .eq("id", appointmentId)
+      .single();
+
+    if (appointmentError || !appointment)
+      return res.status(404).json(new ApiError(404, "Appointment not found"));
+    if (!appointment.homeAppointment)
+      return res.status(400).json(new ApiError(400, "Not a home appointment"));
+    if (appointment.status !== "PENDING")
+      return res
+        .status(400)
+        .json(new ApiError(400, "Appointment not in pending state"));
+
+    // Get patient details
+    const { data: patient, error: patientError } = await supabase
+      .from("User")
+      .select("name, phone")
+      .eq("id", appointment.patientId)
+      .single();
+
+    if (patientError || !patient)
+      return res.status(404).json(new ApiError(404, "Patient not found"));
+
+    // Get lab details
+    const { data: lab, error: labError } = await supabase
+      .from("Lab")
+      .select("name")
+      .eq("id", appointment.labId)
+      .single();
+
+    if (labError || !lab)
+      return res.status(404).json(new ApiError(404, "Lab not found"));
+
+    // Update appointment status to CONFIRMED
+    const { error: updateError } = await supabase
+      .from("Appointment")
+      .update({ status: "CONFIRMED" })
+      .eq("id", appointmentId);
+
+    if (updateError) throw new ApiError(400, updateError.message);
+
+    // Send WhatsApp Notification
+    const message = `Hello ${patient.name},\n\nYour home appointment for *${appointment.testType}* at *${lab.name}* on *${appointment.scheduledAt}* has been confirmed.\n\nThank you!`;
+
+    await sendWhatsAppMessage(patient.phone, message);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "Appointment confirmed and message sent"));
+  } catch (err) {
+    console.error("❌ Error confirming home appointment:", err);
+    return res.status(500).json(new ApiError(500, "Internal Server Error"));
+  }
+};
+
+// ❌ Reject Home Appointment (Unassign Assistant & Revert Status to HOME)
+export const rejectHomeAppointment = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { appointmentId, assistantId } = req.body as {
+      appointmentId: string;
+      assistantId: string;
+    };
+
+    // Check if the appointment exists and is currently assigned
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("Appointment")
+      .select("id, status, homeAppointment")
+      .eq("id", appointmentId)
+      .single();
+
+    if (appointmentError || !appointment)
+      return res.status(404).json(new ApiError(404, "Appointment not found"));
+    if (!appointment.homeAppointment)
+      return res.status(400).json(new ApiError(400, "Not a home appointment"));
+    if (appointment.status !== "PENDING")
+      return res
+        .status(400)
+        .json(new ApiError(400, "Appointment is not currently assigned"));
+
+    // Remove assistant from schedule
+    const { error: deleteError } = await supabase
+      .from("AssistantSchedule")
+      .delete()
+      .eq("appointmentId", appointmentId)
+      .eq("assistantId", assistantId);
+
+    if (deleteError) throw new ApiError(400, deleteError.message);
+
+    // Update appointment status back to HOME
+    const { error: updateError } = await supabase
+      .from("Appointment")
+      .update({ status: "HOME" })
+      .eq("id", appointmentId);
+
+    if (updateError) throw new ApiError(400, updateError.message);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          "Appointment unassigned and reverted to HOME status"
+        )
+      );
+  } catch (err) {
+    console.error("❌ Error rejecting home appointment:", err);
+    return res.status(500).json(new ApiError(500, "Internal Server Error"));
+  }
+};

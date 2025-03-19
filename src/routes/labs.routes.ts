@@ -3,6 +3,9 @@ import {
   getAppointmentsByStatus,
   updateAppointmentStatusToReportGenerated,
   confirmAppointment,
+  assignHomeAppointment,
+  confirmHomeAppointment,
+  rejectHomeAppointment,
 } from "../controllers/labs.controller";
 
 const router = express.Router();
@@ -36,6 +39,36 @@ router.patch("/confirm", async (req, res, next) => {
     await confirmAppointment(req, res);
   } catch (error) {
     console.error("❌ Error in /confirm route:", error);
+    next(error);
+  }
+});
+
+router.post("/assign-home", async (req, res, next) => {
+  try {
+    console.log("📨 Received request at /assign-home:", req.body);
+    await assignHomeAppointment(req, res);
+  } catch (error) {
+    console.error("❌ Error in /assign-home route:", error);
+    next(error);
+  }
+});
+
+router.post("/confirm-home", async (req, res, next) => {
+  try {
+    console.log("📨 Received request at /confirm-home:", req.body);
+    await confirmHomeAppointment(req, res);
+  } catch (error) {
+    console.error("❌ Error in /confirm-home route:", error);
+    next(error);
+  }
+});
+
+router.post("/reject-home", async (req, res, next) => {
+  try {
+    console.log("📨 Received request at /reject-home:", req.body);
+    await rejectHomeAppointment(req, res);
+  } catch (error) {
+    console.log("❌ Error in /reject-home route:", error);
     next(error);
   }
 });
