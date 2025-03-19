@@ -185,3 +185,72 @@ export const getLabAssistants = async (
     return res.status(500).json(new ApiError(500, "Internal Server Error"));
   }
 };
+
+// 🟡 Get Lab Assistant's Appointments by Status
+export const getAssignedAppointmentsByStatus = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { assistantId, status } = req.body as {
+      assistantId: string;
+      status: string;
+    };
+
+    // Validate status
+    const validStatuses = ["PENDING", "CONFIRMED", "COMPLETED"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json(new ApiError(400, "Invalid status"));
+    }
+
+    // Fetch assistant's assigned appointments
+    const { data: appointments, error: appointmentError } = await supabase
+      .from("AssistantSchedule")
+      .select("appointmentId")
+      .eq("assistantId", assistantId);
+
+    if (appointmentError) throw new ApiError(400, appointmentError.message);
+    if (!appointments || appointments.length === 0)
+      return res.status(200).json(new ApiResponse(200, []));
+
+    const appointmentIds = appointments.map((a) => a.appointmentId);
+
+    // Fetch appointment details along with patientId
+    const { data: appointmentDetails, error: detailsError } = await supabase
+      .from("Appointment")
+      .select("id, scheduledAt, status, testType, homeAppointment, patientId")
+      .in("id", appointmentIds)
+      .eq("status", status);
+
+    if (detailsError) throw new ApiError(400, detailsError.message);
+    if (!appointmentDetails || appointmentDetails.length === 0)
+      return res.status(200).json(new ApiResponse(200, []));
+
+    const patientIds = [...new Set(appointmentDetails.map((a) => a.patientId))];
+
+    // Fetch patient user details
+    const { data: patients, error: patientError } = await supabase
+      .from("User")
+      .select("id, name, email, phone")
+      .in("id", patientIds);
+
+    if (patientError) throw new ApiError(400, patientError.message);
+
+    // Map patient details to their IDs
+    const patientMap = patients.reduce((acc, p) => {
+      acc[p.id] = { name: p.name, email: p.email, phone: p.phone };
+      return acc;
+    }, {} as Record<string, { name: string; email: string; phone: string }>);
+
+    // Attach patient info to appointments
+    const enrichedAppointments = appointmentDetails.map((a) => ({
+      ...a,
+      patient: patientMap[a.patientId] || null,
+    }));
+
+    return res.status(200).json(new ApiResponse(200, enrichedAppointments));
+  } catch (err) {
+    console.error("❌ Error fetching assistant appointments:", err);
+    return res.status(500).json(new ApiError(500, "Internal Server Error"));
+  }
+};

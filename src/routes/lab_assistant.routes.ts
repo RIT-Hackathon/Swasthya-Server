@@ -3,6 +3,7 @@ import {
   addLabAssistant,
   deleteLabAssistant,
   getLabAssistants,
+  getAssignedAppointmentsByStatus,
 } from "../controllers/lab_assistant.controller";
 
 const router = Router();
@@ -16,6 +17,7 @@ router.post("/add", async (req, res, next) => {
     next(error);
   }
 });
+
 router.delete("/delete", async (req, res, next) => {
   try {
     console.log("📨 Received request at /delete:", req.body);
@@ -25,12 +27,23 @@ router.delete("/delete", async (req, res, next) => {
     next(error);
   }
 });
+
 router.get("/assistants", async (req, res, next) => {
   try {
     console.log("📨 Received request at /assistants:", req.body);
     await getLabAssistants(req, res);
   } catch (error) {
     console.error("❌ Error in /assistants route:", error);
+    next(error);
+  }
+});
+
+router.get("/assigned-appointments", async (req, res, next) => {
+  try {
+    console.log("📨 Received request at /assigned-appointments:", req.body);
+    await getAssignedAppointmentsByStatus(req, res);
+  } catch (error) {
+    console.error("❌ Error in /assigned-appointments route:", error);
     next(error);
   }
 });
