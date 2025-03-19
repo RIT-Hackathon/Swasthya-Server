@@ -33,14 +33,21 @@ export const signUpPatient = async (
 
     if (error) {
       console.error("❌ Supabase signUp error:", error.message);
-      const apiError = new ApiError(400, error.message);
-      return res.status(apiError.statusCode).json(apiError);
+      const apiError = new ApiError(400, "Sign-up failed", [error.message]);
+      console.log("🚀 ~ apiError:", apiError);
+      return res.status(apiError.statusCode).json({
+        success: false,
+        data: apiError, 
+      });
     }
 
     if (!data.user) {
       console.error("⚠️ No user returned from Supabase Auth");
       const apiError = new ApiError(500, "User registration failed");
-      return res.status(apiError.statusCode).json(apiError);
+      return res.status(apiError.statusCode).json({
+        success: false,
+        data: apiError, 
+      });
     }
 
     const userId = data.user.id; // Use the same ID for User & Patient
@@ -61,7 +68,10 @@ export const signUpPatient = async (
     if (dbError1) {
       console.error("❌ User table insert error:", dbError1.message);
       const apiError = new ApiError(400, dbError1.message);
-      return res.status(apiError.statusCode).json(apiError);
+      return res.status(apiError.statusCode).json({
+        success: false,
+        data: apiError, 
+      });
     }
 
     // Insert patient details into 'Patient' table
@@ -75,7 +85,10 @@ export const signUpPatient = async (
     if (dbError2) {
       console.error("❌ Patient table insert error:", dbError2.message);
       const apiError = new ApiError(400, dbError2.message);
-      return res.status(apiError.statusCode).json(apiError);
+      return res.status(apiError.statusCode).json({
+        success: false,
+        data: apiError, 
+      });
     }
 
     console.log("✅ Patient registered successfully:", patientData);

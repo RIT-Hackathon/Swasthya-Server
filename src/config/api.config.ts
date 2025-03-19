@@ -12,9 +12,9 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.statusCode = statusCode;
-    this.data = null;
+    this.data = { message }; // Store error message inside `data`
     this.success = false;
-    this.errors = errors;
+    this.errors = errors.length ? errors : [message]; // Ensure errors array is populated
 
     if (stack) {
       this.stack = stack;
