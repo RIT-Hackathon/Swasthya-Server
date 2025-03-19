@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes";
 import twilioRoutes from "./routes/twilio.routes";
 import labAssistantRoutes from "./routes/lab_assistant.routes";
 import labRoutes from "./routes/labs.routes";
+import userRoutes from "./routes/user.routes";
 
 dotenv.config(); // Load environment variables
 
@@ -19,5 +20,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/twilio", twilioRoutes);
 app.use("/api/lab-assistant", labAssistantRoutes);
 app.use("/api/appointments", labRoutes);
+app.use("/api/user", userRoutes);
 
 export default app;
