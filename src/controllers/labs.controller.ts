@@ -444,3 +444,68 @@ export const rejectHomeAppointment = async (
     return res.status(500).json(new ApiError(500, "Internal Server Error"));
   }
 };
+
+export const toggleAutoAppointment = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { labId, headId } = req.body;
+
+    // Validate input
+    if (!labId || !headId) {
+      return res
+        .status(400)
+        .json(new ApiError(400, "Lab ID and Head ID are required"));
+    }
+
+    // Verify if headId belongs to the given labId
+    const { data: labHead, error: headError } = await supabase
+      .from("LabHead")
+      .select("userId")
+      .eq("userId", headId)
+      .eq("labId", labId)
+      .single();
+
+    if (headError || !labHead) {
+      return res
+        .status(403)
+        .json(
+          new ApiError(403, "Unauthorized: Head ID does not belong to this lab")
+        );
+    }
+
+    // Get current auto appointment status
+    const { data: lab, error: labError } = await supabase
+      .from("Lab")
+      .select("autoAppointment")
+      .eq("id", labId)
+      .single();
+
+    if (labError || !lab) {
+      return res.status(404).json(new ApiError(404, "Lab not found"));
+    }
+
+    // Toggle auto appointment status
+    const newStatus = !lab.autoAppointment;
+    const { error: updateError } = await supabase
+      .from("Lab")
+      .update({ autoAppointment: newStatus })
+      .eq("id", labId);
+
+    if (updateError) throw new ApiError(500, updateError.message);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { autoAppointment: newStatus },
+          "Auto appointment status updated successfully"
+        )
+      );
+  } catch (err) {
+    console.error("❌ Error toggling auto appointment status:", err);
+    return res.status(500).json(new ApiError(500, "Internal Server Error"));
+  }
+};

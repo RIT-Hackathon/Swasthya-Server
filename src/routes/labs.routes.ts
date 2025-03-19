@@ -6,6 +6,7 @@ import {
   assignHomeAppointment,
   confirmHomeAppointment,
   rejectHomeAppointment,
+  toggleAutoAppointment,
 } from "../controllers/labs.controller";
 
 const router = express.Router();
@@ -69,6 +70,16 @@ router.post("/reject-home", async (req, res, next) => {
     await rejectHomeAppointment(req, res);
   } catch (error) {
     console.log("❌ Error in /reject-home route:", error);
+    next(error);
+  }
+});
+
+router.patch("/toggle-status", async (req, res, next) => {
+  try {
+    console.log("📨 Received request at /toggle-status:", req.body);
+    await toggleAutoAppointment(req, res);
+  } catch (error) {
+    console.error("❌ Error in /toggle-status route:", error);
     next(error);
   }
 });
