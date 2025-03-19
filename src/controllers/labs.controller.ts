@@ -34,18 +34,18 @@ export const getAppointmentsByStatus = async (
           labId, 
           scheduledAt, 
           status, 
-          testType
+          testType, 
+          homeAppointment
         `
       )
       .eq("labId", labId)
       .eq("status", status);
+    console.log(appointments);
 
     if (error) throw new ApiError(400, error.message);
 
-    // Fetch patient names from User table based on patientId for each appointment
-    const patientIds = appointments.map(
-      (appointment: any) => appointment.patientId
-    );
+    // Fetch patient names from User table
+    const patientIds = appointments.map((appt: any) => appt.patientId);
     const { data: users, error: userError } = await supabase
       .from("User")
       .select("id, name")
@@ -53,18 +53,59 @@ export const getAppointmentsByStatus = async (
 
     if (userError) throw new ApiError(400, userError.message);
 
-    // Map patient names to their respective appointments
-    const appointmentsWithNames = appointments.map((appointment: any) => {
+    // Fetch assigned assistant IDs if status is CONFIRMED or COMPLETED and is homeAppointment
+    let assistantAssignments: any[] = [];
+    if (["CONFIRMED", "COMPLETED"].includes(status)) {
+      const homeAppointmentIds = appointments
+        .filter((appt: any) => appt.homeAppointment)
+        .map((appt: any) => appt.id);
+
+      if (homeAppointmentIds.length > 0) {
+        const { data: assistants, error: assistantError } = await supabase
+          .from("AssistantSchedule")
+          .select("appointmentId, assistantId")
+          .in("appointmentId", homeAppointmentIds);
+
+        if (assistantError) throw new ApiError(400, assistantError.message);
+        assistantAssignments = assistants;
+
+        // Extract assistant IDs
+        const assistantIds = assistants.map((asst: any) => asst.assistantId);
+
+        // Fetch assistant names from User table
+        const { data: assistantUsers, error: assistantUserError } =
+          await supabase.from("User").select("id, name").in("id", assistantIds);
+
+        if (assistantUserError)
+          throw new ApiError(400, assistantUserError.message);
+
+        // Map assistant IDs to names
+        assistantAssignments = assistantAssignments.map((asst: any) => ({
+          ...asst,
+          assistantName:
+            assistantUsers.find((user: any) => user.id === asst.assistantId)
+              ?.name || "Unknown",
+        }));
+      }
+    }
+
+    // Map patient names and assigned assistants
+    const appointmentsWithDetails = appointments.map((appointment: any) => {
       const patient = users.find(
         (user: any) => user.id === appointment.patientId
       );
+      const assistant = assistantAssignments.find(
+        (asst: any) => asst.appointmentId === appointment.id
+      );
+
       return {
         ...appointment,
         patientName: patient ? patient.name : "Unknown",
+        assistantName: assistant ? assistant.assistantName : null,
       };
     });
 
-    return res.status(200).json(new ApiResponse(200, appointmentsWithNames));
+    return res.status(200).json(new ApiResponse(200, appointmentsWithDetails));
   } catch (err) {
     console.error("❌ Error fetching appointments:", err);
     return res.status(500).json(new ApiError(500, "Internal Server Error"));
