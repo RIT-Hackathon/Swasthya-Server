@@ -14,8 +14,8 @@ const router = express.Router();
 // Route for fetching appointments by status
 router.get("/status", async (req, res, next) => {
   try {
-    console.log("📨 Received request at /status:", req.body);
-    await getAppointmentsByStatus(req, res);
+    console.log("📨 Received request at /status:", req.query);
+    await getAppointmentsByStatus(req, res);  // Pass req.query-based values
   } catch (error) {
     console.error("❌ Error in /status route:", error);
     next(error);
@@ -33,7 +33,6 @@ router.post("/report-generated", async (req, res, next) => {
   }
 });
 
-// Route for confirming an appointment
 router.patch("/confirm", async (req, res, next) => {
   try {
     console.log("📨 Received request at /confirm:", req.body);
