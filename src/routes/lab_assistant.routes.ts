@@ -8,44 +8,16 @@ import {
 
 const router = Router();
 
-router.post("/add", async (req, res, next) => {
-  try {
-    console.log("📨 Received request at /add:", req.body);
-    await addLabAssistant(req, res);
-  } catch (error) {
-    console.error("❌ Error in /add route:", error);
-    next(error);
-  }
-});
+// Add Lab Assistant ✅
+router.post("/add", addLabAssistant);
 
-router.delete("/delete", async (req, res, next) => {
-  try {
-    console.log("📨 Received request at /delete:", req.body);
-    await deleteLabAssistant(req, res);
-  } catch (error) {
-    console.error("❌ Error in /delete route:", error);
-    next(error);
-  }
-});
+// Delete Lab Assistant ✅
+router.post("/delete", deleteLabAssistant);
 
-router.get("/assistants", async (req, res, next) => {
-  try {
-    console.log("📨 Received request at /assistants:", req.body);
-    await getLabAssistants(req, res);
-  } catch (error) {
-    console.error("❌ Error in /assistants route:", error);
-    next(error);
-  }
-});
+// Get Assistants (Changed to POST) ✅
+router.post("/assistants", getLabAssistants);
 
-router.get("/assigned-appointments", async (req, res, next) => {
-  try {
-    console.log("📨 Received request at /assigned-appointments:", req.body);
-    await getAssignedAppointmentsByStatus(req, res);
-  } catch (error) {
-    console.error("❌ Error in /assigned-appointments route:", error);
-    next(error);
-  }
-});
+// Get Appointments by Status ✅
+router.post("/assigned-appointments", getAssignedAppointmentsByStatus);
 
 export default router;
