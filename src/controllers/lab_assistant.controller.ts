@@ -192,7 +192,7 @@ export const getAssignedAppointmentsByStatus = async (
   res: Response
 ): Promise<any> => {
   try {
-    const { assistantId, status } = req.body as {
+    const { assistantId, status } = req.query as {
       assistantId: string;
       status: string;
     };

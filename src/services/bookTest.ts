@@ -5,6 +5,7 @@ import {
   checkIfPatientAddressExists,
 } from "../utils/user.utils";
 import moment from "moment";
+import { sendWhatsAppMessage } from "../utils/twilio.utils";
 
 export const handleBooktest = async (
   from: string,
@@ -19,7 +20,8 @@ export const handleBooktest = async (
     await supabase
       .from("UserIntentTracking")
       .update({ isCompleted: true })
-      .eq("phone", from);
+      .eq("phone", from)
+      .eq("intent", "BOOK_TEST");
     return res.send(
       `<Response><Message>✅ Booking operation canceled.</Message></Response>`
     );
@@ -46,9 +48,9 @@ export const handleBooktest = async (
     .eq("userId", userId)
     .single();
 
-  let reportType = null;
+  let typeoftest = null;
 
-  const reportTypeMap: { [key: string]: string } = {
+  const typeoftestMap: { [key: string]: string } = {
     blood: "BLOOD_TEST",
     xray: "X_RAY",
     "x-ray": "X_RAY",
@@ -62,8 +64,8 @@ export const handleBooktest = async (
   // Convert message to lowercase and check for report keywords
   const words = message.toLowerCase().split(/\s+/);
   for (const word of words) {
-    if (reportTypeMap[word]) {
-      reportType = reportTypeMap[word];
+    if (typeoftestMap[word]) {
+      typeoftest = typeoftestMap[word];
       break;
     }
   }
@@ -140,14 +142,15 @@ export const handleBooktest = async (
   console.log("⏰ Extracted Time:", timeOfTest);
 
   if (!existingEntry) {
-    console.log("🆕 No existing cache, creating new entary...");
+    console.log("🆕 No existing cache, creating new entry...");
     const cacheEntry: any = { userId, phone: from, ifaddress: true };
 
-    if (reportType) cacheEntry.reportType = reportType;
+    if (typeoftest) cacheEntry.typeoftest = typeoftest;
     if (dateOfTest) cacheEntry.dateOfTest = dateOfTest;
     if (timeOfTest) cacheEntry.timeOfTest = timeOfTest;
 
     const { error } = await supabase.from("CacheBooking").insert([cacheEntry]);
+
     if (error) {
       console.error("❌ Error inserting into CacheBooking:", error);
       return res.send(
@@ -155,29 +158,32 @@ export const handleBooktest = async (
       );
     }
 
-    if (reportType === null) {
-      return res.send(
-        `<Response><Message>📄 Please specify the type of test (e.g., BLOOD, XRAY).</Message></Response>`
+    if (!typeoftest) {
+      console.log("Here Type");
+      await sendWhatsAppMessage(
+        from,
+        "📄 Please specify the type of test (e.g., BLOOD, XRAY)."
       );
+      return;
     }
 
-    if (dateOfTest === null) {
-      return res.send(
-        `<Response><Message>📅 Please specify a date for the test.</Message></Response>`
-      );
+    if (!dateOfTest) {
+      console.log("Here Date");
+      await sendWhatsAppMessage(from, "📅 Please specify a date for the test.");
+      return;
     }
 
-    if (timeOfTest === null) {
-      return res.send(
-        `<Response><Message>⏰ Please specify a time for the test.</Message></Response>`
-      );
+    if (!timeOfTest) {
+      console.log("Here Time");
+      await sendWhatsAppMessage(from, "⏰ Please specify a time for the test.");
+      return;
     }
   } else {
     console.log("🛠 Updating existing cache entry...");
     let updates: any = {};
 
-    if (!existingEntry.reportType && reportType)
-      updates.reportType = reportType;
+    if (!existingEntry.typeoftest && typeoftest)
+      updates.typeoftest = typeoftest;
     if (!existingEntry.dateOfTest && dateOfTest)
       updates.dateOfTest = dateOfTest;
     if (!existingEntry.timeOfTest && timeOfTest)
@@ -186,12 +192,15 @@ export const handleBooktest = async (
     console.log("🔄 Updates:", updates);
 
     if (
-      (!existingEntry.ifhome && reportType === "BLOOD_TEST") ||
-      reportType === "URINE_TEST"
+      (!existingEntry.ifhome && typeoftest === "BLOOD_TEST") ||
+      typeoftest === "URINE_TEST"
     ) {
-      return res.send(
-        `<Response><Message>🏠 Do you want a home appointment? (YES/NO)</Message></Response>`
+      console.log("Inside Home");
+      await sendWhatsAppMessage(
+        from,
+        "🏠 Do you want a home appointment? (YES/NO)"
       );
+      return;
     }
 
     console.log(existingEntry);
@@ -219,27 +228,39 @@ export const handleBooktest = async (
 
     console.log(existingEntry);
 
-    if (existingEntry.reportType === null && reportType === null) {
-      return res.send(
-        `<Response><Message>📄 Please specify the type of test (e.g., BLOOD, XRAY).</Message></Response>`
+    if (!existingEntry.typeoftest && !typeoftest) {
+      console.log("Here test exists");
+      await sendWhatsAppMessage(
+        from,
+        "📄 Please specify the type of test (e.g., BLOOD, XRAY)."
       );
+      return;
     }
 
-    if (existingEntry.dateOfTest === null && dateOfTest === null) {
-      return res.send(
-        `<Response><Message>📅 Please specify a date for the test.</Message></Response>`
-      );
+    if (!existingEntry.dateOfTest && !dateOfTest) {
+      console.log("Here date exists");
+      await sendWhatsAppMessage(from, "📅 Please specify a date for the test.");
+      return;
     }
 
-    if (existingEntry.timeOfTest === null && timeOfTest === null) {
-      return res.send(
-        `<Response><Message>⏰ Please specify a time for the test.</Message></Response>`
-      );
+    if (!existingEntry.timeOfTest && !timeOfTest) {
+      console.log("Here time exist");
+      await sendWhatsAppMessage(from, "⏰ Please specify a time for the test.");
+      return;
     }
 
+    //TODO: Add autoAppointmentCheck
     console.log("✅ Booking ready to save!");
-    await supabase.from("Bookings").insert([existingEntry]);
-    await supabase.from("CacheBooking").delete().eq("userId", userId);
+    const { error: UploadError } = await supabase
+      .from("Bookings")
+      .insert([existingEntry]);
+    const { error: cacheDeleteError } = await supabase
+      .from("CacheBooking")
+      .delete()
+      .eq("userId", userId);
+
+    console.log("🚀 ~ UploadError:", UploadError);
+    console.log("🚀 ~ cacheDeleteError:", cacheDeleteError);
 
     return res.send(
       `<Response><Message>✅ Your test has been booked successfully!</Message></Response>`

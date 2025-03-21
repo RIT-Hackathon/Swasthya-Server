@@ -55,10 +55,9 @@ export const respondToQuery = async (req: Request, res: Response) => {
     }
   } catch (error) {
     console.error("❌ Error processing intent:", error);
+    // Default response for now
+    res.send(
+      `<Response><Message>⚠️ Server error. Please try again later.</Message></Response>`
+    );
   }
-
-  // Default response for now
-  res.send(
-    `<Response><Message>⚠️ Server error. Please try again later.</Message></Response>`
-  );
 };
