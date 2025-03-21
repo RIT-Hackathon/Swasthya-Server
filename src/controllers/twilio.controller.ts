@@ -1,35 +1,64 @@
 import { Request, Response } from "express";
-import { downloadMedia } from "../utils/mediaDownload.utils";
-import { uploadToSupabase } from "../utils/mediaUpload.utils";
-import fs from "fs";
+import { handleUploadDocument } from "../services/uploadDocument";
+import { handleBooktest } from "../services/bookTest";
+import {
+  getLatestIncompleteIntent,
+  createNewIntent,
+} from "../utils/intent.utils";
 
 export const respondToQuery = async (req: Request, res: Response) => {
   const message: string = req.body.Body;
-  const from: string = req.body.From;
+  let from: string = req.body.From;
   const mediaUrl: string | undefined = req.body.MediaUrl0;
   const mediaType: string | undefined = req.body.MediaContentType0;
-  let supabaseUrl: string | null = null;
+
+  // Remove 'whatsapp+' from the beginning
+  if (from.startsWith("whatsapp:")) {
+    from = from.replace("whatsapp:", "").trim();
+  }
 
   console.log("📨 Received message:", message, "from:", from);
 
-  if (mediaUrl && mediaType) {
-    const fileExtension = mediaType.split("/")[1] || "bin";
-    const filename = `whatsapp-media-${Date.now()}.${fileExtension}`;
-    const savedFilePath = await downloadMedia(mediaUrl, filename);
+  try {
+    const existingIntent = await getLatestIncompleteIntent(from);
 
-    if (savedFilePath) {
-      console.log("📂 Media saved locally at:", savedFilePath);
+    if (existingIntent) {
+      console.log("🔄 Resuming existing intent:", existingIntent.intent);
 
-      // Upload to Supabase
-      supabaseUrl = await uploadToSupabase(savedFilePath);
+      // if (existingIntent.intent === "UPLOAD_DOCUMENT") {
+      //   return handleUploadDocument(from, message, mediaUrl, mediaType, res);
+      // }
+      if (existingIntent.intent === "BOOK_TEST") {
+        return handleBooktest(from, message, res);
+      }
+    } else {
+      const IDENTIFIED_INTENT = "BOOK_TEST"; // Identify intent from message
+      console.log("🔍 Identified intent:", IDENTIFIED_INTENT);
 
-      // Delete the local file
-      fs.unlinkSync(savedFilePath);
-      console.log("🗑 Deleted local file:", savedFilePath);
+      const newIntent = await createNewIntent(from, IDENTIFIED_INTENT);
+
+      if (!newIntent) {
+        console.error("❌ Failed to create new intent.");
+        return res.send(
+          `<Response><Message>⚠️ Unable to process request. Please try again later.</Message></Response>`
+        );
+      }
+
+      console.log("✨ Created new intent:", newIntent.intent);
+
+      // if (IDENTIFIED_INTENT === "UPLOAD_DOCUMENT") {
+      //   return handleUploadDocument(from, message, mediaUrl, mediaType, res);
+      // }
+      if (IDENTIFIED_INTENT === "BOOK_TEST") {
+        return handleBooktest(from, message, res);
+      }
     }
+  } catch (error) {
+    console.error("❌ Error processing intent:", error);
   }
 
+  // Default response for now
   res.send(
-    `<Response><Message>Thanks for your message: ${message}, Link: ${supabaseUrl}</Message></Response>`
+    `<Response><Message>⚠️ Server error. Please try again later.</Message></Response>`
   );
 };
