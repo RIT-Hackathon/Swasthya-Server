@@ -275,6 +275,8 @@ export const assignHomeAppointment = async (
       .eq("id", appointmentId)
       .single();
 
+      console.log("➡️ Query Result:", { appointment, appointmentError });
+      
     if (appointmentError || !appointment)
       return res.status(404).json(new ApiError(404, "Appointment not found"));
     if (!appointment.homeAppointment)
