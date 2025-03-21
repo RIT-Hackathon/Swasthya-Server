@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { handleUploadDocument } from "../services/uploadDocument";
 import { handleBooktest } from "../services/bookTest";
+import { handleRetrieveDocument } from "../services/retrieveDocument";
 import {
   getLatestIncompleteIntent,
   createNewIntent,
@@ -28,11 +29,14 @@ export const respondToQuery = async (req: Request, res: Response) => {
       // if (existingIntent.intent === "UPLOAD_DOCUMENT") {
       //   return handleUploadDocument(from, message, mediaUrl, mediaType, res);
       // }
-      if (existingIntent.intent === "BOOK_TEST") {
-        return handleBooktest(from, message, res);
+      // if (existingIntent.intent === "BOOK_TEST") {
+      //   return handleBooktest(from, message, res);
+      // }
+      if(existingIntent.intent === "RETRIEVE_DOCUMENT") {
+        return handleRetrieveDocument(from, message, res);
       }
     } else {
-      const IDENTIFIED_INTENT = "BOOK_TEST"; // Identify intent from message
+      const IDENTIFIED_INTENT = "RETRIEVE_DOCUMENT"; // Identify intent from message
       console.log("🔍 Identified intent:", IDENTIFIED_INTENT);
 
       const newIntent = await createNewIntent(from, IDENTIFIED_INTENT);
@@ -49,8 +53,11 @@ export const respondToQuery = async (req: Request, res: Response) => {
       // if (IDENTIFIED_INTENT === "UPLOAD_DOCUMENT") {
       //   return handleUploadDocument(from, message, mediaUrl, mediaType, res);
       // }
-      if (IDENTIFIED_INTENT === "BOOK_TEST") {
-        return handleBooktest(from, message, res);
+      // if (IDENTIFIED_INTENT === "BOOK_TEST") {
+      //   return handleBooktest(from, message, res);
+      // }
+      if(IDENTIFIED_INTENT === "RETRIEVE_DOCUMENT") {
+        return handleRetrieveDocument(from, message, res);
       }
     }
   } catch (error) {

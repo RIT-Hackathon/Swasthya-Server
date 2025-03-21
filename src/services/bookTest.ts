@@ -70,8 +70,8 @@ export const handleBooktest = async (
     }
   }
 
-  let dateOfTest: string | null = null;
-  let timeOfTest: string | null = null;
+  let dateoftest: string | null = null;
+  let timeoftest: string | null = null;
 
   const dateKeywords: { [key: string]: number } = {
     today: 0,
@@ -91,7 +91,7 @@ export const handleBooktest = async (
     if (dateKeywords[word] !== undefined) {
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + dateKeywords[word]);
-      dateOfTest = targetDate.toISOString().split("T")[0];
+      dateoftest = targetDate.toISOString().split("T")[0];
       break;
     }
   }
@@ -99,7 +99,7 @@ export const handleBooktest = async (
   // Check for approximate time keywords
   for (const word of words) {
     if (timeKeywords[word]) {
-      timeOfTest = timeKeywords[word];
+      timeoftest = timeKeywords[word];
       break;
     }
   }
@@ -112,11 +112,11 @@ export const handleBooktest = async (
 
     // Convert 12-hour format (e.g., 9AM, 10:30 PM) to 24-hour
     if (extractedTime.includes("AM") || extractedTime.includes("PM")) {
-      timeOfTest = moment(extractedTime, ["hA", "h:mmA"]).format("HH:mm:ss");
+      timeoftest = moment(extractedTime, ["hA", "h:mmA"]).format("HH:mm:ss");
     } else if (extractedTime.includes(":")) {
-      timeOfTest = moment(extractedTime, "HH:mm").format("HH:mm:ss");
+      timeoftest = moment(extractedTime, "HH:mm").format("HH:mm:ss");
     } else {
-      timeOfTest = moment(extractedTime, "H").format("HH:mm:ss");
+      timeoftest = moment(extractedTime, "H").format("HH:mm:ss");
     }
   }
 
@@ -134,20 +134,20 @@ export const handleBooktest = async (
       true
     );
     if (parsedDate.isValid()) {
-      dateOfTest = parsedDate.format("YYYY-MM-DD");
+      dateoftest = parsedDate.format("YYYY-MM-DD");
     }
   }
 
-  console.log("📅 Extracted Date:", dateOfTest);
-  console.log("⏰ Extracted Time:", timeOfTest);
+  console.log("📅 Extracted Date:", dateoftest);
+  console.log("⏰ Extracted Time:", timeoftest);
 
   if (!existingEntry) {
     console.log("🆕 No existing cache, creating new entry...");
     const cacheEntry: any = { userId, phone: from, ifaddress: true };
 
     if (typeoftest) cacheEntry.typeoftest = typeoftest;
-    if (dateOfTest) cacheEntry.dateOfTest = dateOfTest;
-    if (timeOfTest) cacheEntry.timeOfTest = timeOfTest;
+    if (dateoftest) cacheEntry.dateoftest = dateoftest;
+    if (timeoftest) cacheEntry.timeoftest = timeoftest;
 
     const { error } = await supabase.from("CacheBooking").insert([cacheEntry]);
 
@@ -167,13 +167,13 @@ export const handleBooktest = async (
       return;
     }
 
-    if (!dateOfTest) {
+    if (!dateoftest) {
       console.log("Here Date");
       await sendWhatsAppMessage(from, "📅 Please specify a date for the test.");
       return;
     }
 
-    if (!timeOfTest) {
+    if (!timeoftest) {
       console.log("Here Time");
       await sendWhatsAppMessage(from, "⏰ Please specify a time for the test.");
       return;
@@ -184,10 +184,10 @@ export const handleBooktest = async (
 
     if (!existingEntry.typeoftest && typeoftest)
       updates.typeoftest = typeoftest;
-    if (!existingEntry.dateOfTest && dateOfTest)
-      updates.dateOfTest = dateOfTest;
-    if (!existingEntry.timeOfTest && timeOfTest)
-      updates.timeOfTest = timeOfTest;
+    if (!existingEntry.dateoftest && dateoftest)
+      updates.dateoftest = dateoftest;
+    if (!existingEntry.timeoftest && timeoftest)
+      updates.timeoftest = timeoftest;
 
     console.log("🔄 Updates:", updates);
 
@@ -230,23 +230,39 @@ export const handleBooktest = async (
 
     if (!existingEntry.typeoftest && !typeoftest) {
       console.log("Here test exists");
-      await sendWhatsAppMessage(
-        from,
-        "📄 Please specify the type of test (e.g., BLOOD, XRAY)."
+      return res.send(
+        `<Response><Message>📄 Please specify the type of test (e.g., BLOOD, XRAY).</Message></Response>`
       );
-      return;
     }
+    updates.typeoftest = message.trim().toUpperCase();
 
-    if (!existingEntry.dateOfTest && !dateOfTest) {
+    if (!existingEntry.dateoftest && !dateoftest) {
       console.log("Here date exists");
-      await sendWhatsAppMessage(from, "📅 Please specify a date for the test.");
-      return;
+      return res.send(
+        `<Response><Message>📅 Please specify a date for the test.</Message></Response>`
+      );
     }
+    updates.dateoftest = dateoftest;
 
-    if (!existingEntry.timeOfTest && !timeOfTest) {
+    if (!existingEntry.timeoftest && !timeoftest) {
       console.log("Here time exist");
-      await sendWhatsAppMessage(from, "⏰ Please specify a time for the test.");
-      return;
+      return res.send(
+        `<Response><Message>⏰ Please specify a time for the test.</Message></Response>`
+      );
+    }
+    updates.timeoftest = timeoftest;
+
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase
+        .from("CacheBooking")
+        .update(updates)
+        .eq("userId", userId);
+      if (error) {
+        console.error("❌ Error updating CacheBooking:", error);
+        return res.send(
+          `<Response><Message>⚠️ Error updating booking details.</Message></Response>`
+        );
+      }
     }
 
     //TODO: Add autoAppointmentCheck
