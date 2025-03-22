@@ -18,6 +18,6 @@ router.post("/delete", deleteLabAssistant);
 router.post("/assistants", getLabAssistants);
 
 // Get Appointments by Status ✅
-router.post("/assigned-appointments", getAssignedAppointmentsByStatus);
+router.get("/assigned-appointments", getAssignedAppointmentsByStatus);
 
 export default router;

@@ -13,7 +13,9 @@ export const getAppointmentsByStatus = async (
     const { labId, status } = req.query as { labId?: string; status?: string };
 
     if (!labId || !status) {
-      return res.status(400).json(new ApiError(400, "labId and status are required"));
+      return res
+        .status(400)
+        .json(new ApiError(400, "labId and status are required"));
     }
 
     // Validate status
@@ -30,14 +32,14 @@ export const getAppointmentsByStatus = async (
 
     // Fetch appointments with the given status for the specified lab
     const { data: appointments, error } = await supabase
-    .from("Appointment")
-    .select(
-      `id, patientId, labId, scheduledAt, status, testType, homeAppointment`
-    )
-    .eq("labId", labId)
-    .eq("status", status);
+      .from("Appointment")
+      .select(
+        `id, patientId, labId, scheduledAt, status, testType, homeAppointment`
+      )
+      .eq("labId", labId)
+      .eq("status", status);
 
-  if (error) throw new ApiError(400, error.message);
+    if (error) throw new ApiError(400, error.message);
 
     // Fetch patient names from User table
     const patientIds = appointments.map((appt: any) => appt.patientId);
@@ -63,7 +65,6 @@ export const getAppointmentsByStatus = async (
 
         if (assistantError) throw new ApiError(400, assistantError.message);
         assistantAssignments = assistants;
-
 
         // Extract assistant IDs
         const assistantIds = assistants.map((asst: any) => asst.assistantId);
@@ -275,8 +276,8 @@ export const assignHomeAppointment = async (
       .eq("id", appointmentId)
       .single();
 
-      console.log("➡️ Query Result:", { appointment, appointmentError });
-      
+    console.log("➡️ Query Result:", { appointment, appointmentError });
+
     if (appointmentError || !appointment)
       return res.status(404).json(new ApiError(404, "Appointment not found"));
     if (!appointment.homeAppointment)

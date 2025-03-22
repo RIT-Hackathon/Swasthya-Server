@@ -192,14 +192,14 @@ export const getAssignedAppointmentsByStatus = async (
   res: Response
 ): Promise<any> => {
   try {
-    const { assistantId, status } = req.query as {
-      assistantId: string;
-      status: string;
-    };
+    const { assistantId, status } = req.query; // ✅ Read from query params
 
-    // Validate status
+    if (!assistantId || !status) {
+      return res.status(400).json(new ApiError(400, "Missing parameters"));
+    }
+
     const validStatuses = ["PENDING", "CONFIRMED", "COMPLETED"];
-    if (!validStatuses.includes(status)) {
+    if (!validStatuses.includes(status as string)) {
       return res.status(400).json(new ApiError(400, "Invalid status"));
     }
 

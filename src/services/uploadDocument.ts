@@ -4,6 +4,7 @@ import { uploadToSupabase } from "../utils/mediaUpload.utils";
 import { supabase } from "../config/supabase.config";
 import { findUserIdByPhone } from "../utils/user.utils";
 import fs from "fs";
+import axios from "axios";
 
 export const handleUploadDocument = async (
   from: string,
@@ -151,6 +152,17 @@ export const handleUploadDocument = async (
         .from("UserIntentTracking")
         .update({ isCompleted: true })
         .eq("phone", from);
+
+      try {
+        const response = await axios.post("http://127.0.0.1:8000/extract", {
+          user_id: userId,
+          file_url: updatedMediaId, // Assuming mediaId is the file URL
+        });
+
+        console.log("📝 Extraction response:", response.data);
+      } catch (error) {
+        console.error("❌ Error calling extraction API:", error);
+      }
 
       return res.send(
         `<Response><Message>✅ Document uploaded successfully. You can retrieve it anytime.</Message></Response>`
